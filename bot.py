@@ -9,8 +9,10 @@ def main():
         return
 
     try:
-        data = json.loads(sys.argv[1]) # قراءة العنصر الثاني بشكل صحيح
-    except Exception:
+        raw_data = sys.argv.pop(1)
+        data = json.loads(raw_data)
+    except Exception as e:
+        print(f"خطأ في قراءة البيانات: {e}")
         return
 
     text = data.get("text", "").strip()
