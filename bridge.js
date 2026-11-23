@@ -35,22 +35,24 @@ async function startBridge() {
         }
     });
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
-        const msg = messages[0]; // استخراج الرسالة الأولى بشكل صحيح
+    sock.ev.on('messages.upsert', async (chatUpdate) => {
+        const msg = chatUpdate.messages.at(0);
         if (!msg || !msg.message) return;
 
-        const from = msg.key.remoteJid;
-        const sender = msg.key.participant || from;
-        const text = msg.message.conversation || 
-                     msg.message.extendedTextMessage?.text || 
-                     msg.message.imageMessage?.caption || "";
+        // استخراج النص من جميع أنواع الرسائل
+        const m = msg.message;
+        const text = m.conversation || 
+                     (m.extendedTextMessage && m.extendedTextMessage.text) || 
+                     (m.imageMessage && m.imageMessage.caption) || "";
 
         if (!text || !text.startsWith(".")) return;
 
-        console.log(`📩 أمر مستلم: ${text} | من: ${sender}`);
+        const from = msg.key.remoteJid;
+        const sender = msg.key.participant || from;
 
-        // تمرير الرسالة إلى ملف bot.py بلغة بايثون
+        console.log(`📩 أمر مستلم: ${text}`);
+
+        // تمرير البيانات إلى بايثون
         const payload = JSON.stringify({ from, sender, text });
         const py = spawnSync('python3', ['bot.py', payload], { encoding: 'utf-8' });
 
@@ -66,3 +68,4 @@ async function startBridge() {
 }
 
 startBridge();
+                                         
