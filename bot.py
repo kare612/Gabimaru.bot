@@ -1,6 +1,6 @@
 import sys
 import json
-from config import BOT_NAME, OWNER_NAME, OWNER_NUMBER, PREFIX
+from config import BOT_NAME, OWNER_NAME, OWNER_NUMBER, OWNER_LID, PREFIX
 from plugins.general import handle_general
 from plugins.tools import handle_tools
 
@@ -21,8 +21,11 @@ def main():
     if not text.startswith(PREFIX):
         return
 
+    # التحقق من صلاحية المطور عبر رقم الهاتف أو معرّف LID
+    is_owner = (OWNER_NUMBER in sender) or (OWNER_LID in sender)
+
     if text == f"{PREFIX}المطور":
-        if OWNER_NUMBER in sender:
+        if is_owner:
             print(f"👑 أهلاً بك يا مطور البوت ({OWNER_NAME})! لديك كامل الصلاحيات.")
         else:
             print(f"👑 مطور البوت هو: {OWNER_NAME}")
