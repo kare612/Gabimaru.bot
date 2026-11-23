@@ -3,19 +3,27 @@ import threading
 import time
 from neonize.client import NewClient
 from neonize.events import ConnectedEv, MessageEv, PairStatusEv
+from neonize.proto.waCompanionReg.WACompanionReg_pb2 import DeviceProps
 from config import BOT_NAME, BOT_NUMBER, PREFIX
 
-# استيراد جميع ملفات الأوامر من مجلد plugins
 from plugins.general import handle_general_commands
 from plugins.owner import handle_owner_commands
 from plugins.group import handle_group_commands
 from plugins.tools import handle_tools_commands
 
 logging.basicConfig(level=logging.INFO)
-client = NewClient("gabimaru.sqlite3")
+
+# فرض رقم إصدار واتساب حديث لتجاوز خطأ Client outdated (405)
+version_props = DeviceProps(
+    os="Ubuntu",
+    platformType=DeviceProps.DESKTOP,
+    version=DeviceProps.AppVersion(primary=2, secondary=3000, tertiary=1058942110)
+)
+
+client = NewClient("gabimaru.sqlite3", props=version_props)
 
 def request_pairing_code():
-    time.sleep(3)
+    time.sleep(4)
     try:
         code = client.PairPhone(BOT_NUMBER, show_push_notification=True)
         print(f"\n==========================================")
@@ -38,7 +46,6 @@ def on_message(client: NewClient, message: MessageEv):
         message.Message.conversation
         or message.Message.extendedTextMessage.text
     )
-
     if not text:
         return
 
@@ -46,20 +53,14 @@ def on_message(client: NewClient, message: MessageEv):
     sender = message.Info.MessageSource.Sender.User
 
     if text.startswith(PREFIX):
-        # تمرير الأمر بالترتيب على جميع ملفات الأوامر
-        if handle_general_commands(client, message, text):
-            return
-        if handle_owner_commands(client, message, text, sender):
-            return
-        if handle_group_commands(client, message, text):
-            return
-        if handle_tools_commands(client, message, text):
-            return
-
-        # إذا لم يكن الأمر موجوداً في أي ملف
+        if handle_general_commands(client, message, text): return
+        if handle_owner_commands(client, message, text, sender): return
+        if handle_group_commands(client, message, text): return
+        if handle_tools_commands(client, message, text): return
         client.reply_message(f"❌ أمر غير معروف. اكتب `{PREFIX}اوامر` لعرض القائمة.", message)
 
 if __name__ == "__main__":
     print(f"⏳ جاري تشغيل {BOT_NAME} وطلب كود التفعيل للرقم {BOT_NUMBER}...")
     threading.Thread(target=request_pairing_code, daemon=True).start()
     client.connect()
+            
