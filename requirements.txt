@@ -1,1 +1,5 @@
 neonize
+httpx
+requests
+beautifulsoup4
+
