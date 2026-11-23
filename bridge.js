@@ -39,7 +39,6 @@ async function startBridge() {
         const msg = chatUpdate.messages.at(0);
         if (!msg || !msg.message) return;
 
-        // استخراج النص من جميع أنواع الرسائل
         const m = msg.message;
         const text = m.conversation || 
                      (m.extendedTextMessage && m.extendedTextMessage.text) || 
@@ -52,7 +51,6 @@ async function startBridge() {
 
         console.log(`📩 أمر مستلم: ${text}`);
 
-        // تمرير البيانات إلى بايثون
         const payload = JSON.stringify({ from, sender, text });
         const py = spawnSync('python3', ['bot.py', payload], { encoding: 'utf-8' });
 
@@ -61,11 +59,23 @@ async function startBridge() {
         }
 
         if (py.stdout && py.stdout.trim()) {
-            await sock.sendMessage(from, { text: py.stdout.trim() }, { quoted: msg });
+            const output = py.stdout.trim();
+            
+            // التحقق إذا كان الرد يحتوي على صورة مرفقة
+            if (output.startsWith("IMAGE|")) {
+                const parts = output.split("|");
+                const imageUrl = parts.at(1);
+                const captionText = parts.slice(2).join("|");
+                await sock.sendMessage(from, { 
+                    image: { url: imageUrl }, 
+                    caption: captionText 
+                }, { quoted: msg });
+            } else {
+                await sock.sendMessage(from, { text: output }, { quoted: msg });
+            }
             console.log(`✅ تم إرسال الرد بنجاح!`);
         }
     });
 }
 
 startBridge();
-                                         
