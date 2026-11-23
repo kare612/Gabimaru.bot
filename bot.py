@@ -1,9 +1,10 @@
 import logging
+import os
 import threading
 import time
+import neonize
 from neonize.client import NewClient
 from neonize.events import ConnectedEv, MessageEv, PairStatusEv
-from neonize.proto.waCompanionReg.WACompanionReg_pb2 import DeviceProps
 from config import BOT_NAME, BOT_NUMBER, PREFIX
 
 from plugins.general import handle_general_commands
@@ -13,14 +14,43 @@ from plugins.tools import handle_tools_commands
 
 logging.basicConfig(level=logging.INFO)
 
-# فرض رقم إصدار واتساب حديث لتجاوز خطأ Client outdated (405)
-version_props = DeviceProps(
-    os="Ubuntu",
-    platformType=DeviceProps.DESKTOP,
-    version=DeviceProps.AppVersion(primary=2, secondary=3000, tertiary=1058942110)
-)
+# --- دالة الإصلاح التلقائي لخطأ Client Outdated (405) ---
+def auto_patch_neonize():
+    old_ver = b"1042386815"
+    new_ver = b"1068942110" # إصدار واتساب حديث بنفس عدد الخانات
+    patched = False
 
-client = NewClient("gabimaru.sqlite3", props=version_props)
+    # البحث في مسار المكتبة ومسار التخزين المؤقت في Termux
+    search_paths = [
+        os.path.dirname(neonize.__file__),
+        os.path.expanduser("~/.cache"),
+        os.getcwd()
+    ]
+
+    for base_path in search_paths:
+        if not os.path.exists(base_path):
+            continue
+        for root, _, files in os.walk(base_path):
+            for file in files:
+                if file.endswith(".so"):
+                    file_path = os.path.join(root, file)
+                    try:
+                        with open(file_path, "rb") as f:
+                            data = f.read()
+                        if old_ver in data:
+                            with open(file_path, "wb") as f:
+                                f.write(data.replace(old_ver, new_ver))
+                            patched = True
+                    except Exception:
+                        pass
+    if patched:
+        print("🛠️ تم تحديث بروتوكول واتساب تلقائياً لتجاوز خطأ 405!")
+
+# تنفيذ الإصلاح التلقائي قبل تشغيل البوت
+auto_patch_neonize()
+# ---------------------------------------------------------
+
+client = NewClient("gabimaru.sqlite3")
 
 def request_pairing_code():
     time.sleep(4)
@@ -63,4 +93,3 @@ if __name__ == "__main__":
     print(f"⏳ جاري تشغيل {BOT_NAME} وطلب كود التفعيل للرقم {BOT_NUMBER}...")
     threading.Thread(target=request_pairing_code, daemon=True).start()
     client.connect()
-            
