@@ -1,6 +1,6 @@
 from config import BOT_NAME, OWNER_NAME, PREFIX
 
-MENU_IMAGE = "https://ibb.co"
+MENU_IMAGE = "https://ibb.co/pjc1FPp4"
 
 def handle_general(text):
     if text == f"{PREFIX}ping":
