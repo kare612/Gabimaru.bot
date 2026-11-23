@@ -1,6 +1,6 @@
 from config import BOT_NAME, OWNER_NAME, PREFIX
 
-MENU_IMAGE = "https://ibb.co/pjc1FPp4"
+MENU_IMAGE = "https://i.ibb.co/pjc1FPp4/mclalan-3986846211012324452.jpg"
 
 def handle_general(text):
     if text == f"{PREFIX}ping":
@@ -161,3 +161,4 @@ def handle_general(text):
         return f"⚔️ *{BOT_NAME}*\nيعمل بلغة Python 🐍 تحت إشراف المطور {OWNER_NAME}."
 
     return None
+    
