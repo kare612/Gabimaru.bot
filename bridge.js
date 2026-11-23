@@ -29,31 +29,40 @@ async function startBridge() {
 
     sock.ev.on('connection.update', (update) => {
         if (update.connection === 'open') {
-            console.log(`\n✅ تم ربط الجسر بنجاح! البوت يعمل الآن بمحرك Python 🐍\n`);
+            console.log(`\n✅ تم ربط الجسر بنجاح! البوت جاهز لاستقبال الأوامر 🐍\n`);
         } else if (update.connection === 'close') {
             startBridge();
         }
     });
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0];
-        if (!msg.message || msg.key.fromMe) return;
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type !== 'notify') return;
+        const msg = messages[0]; // استخراج الرسالة الأولى بشكل صحيح
+        if (!msg || !msg.message) return;
 
         const from = msg.key.remoteJid;
         const sender = msg.key.participant || from;
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+        const text = msg.message.conversation || 
+                     msg.message.extendedTextMessage?.text || 
+                     msg.message.imageMessage?.caption || "";
 
-        if (!text) return;
+        if (!text || !text.startsWith(".")) return;
+
+        console.log(`📩 أمر مستلم: ${text} | من: ${sender}`);
 
         // تمرير الرسالة إلى ملف bot.py بلغة بايثون
         const payload = JSON.stringify({ from, sender, text });
         const py = spawnSync('python3', ['bot.py', payload], { encoding: 'utf-8' });
 
+        if (py.stderr) {
+            console.error(`⚠️ خطأ في بايثون:\n${py.stderr}`);
+        }
+
         if (py.stdout && py.stdout.trim()) {
             await sock.sendMessage(from, { text: py.stdout.trim() }, { quoted: msg });
+            console.log(`✅ تم إرسال الرد بنجاح!`);
         }
     });
 }
 
 startBridge();
-      
