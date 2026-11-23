@@ -1,55 +1,55 @@
 import logging
+import threading
+import time
 from neonize.client import NewClient
-from neonize.events import ConnectedEv, MessageEv
-from neonize.utils import log
+from neonize.events import ConnectedEv, MessageEv, PairStatusEv
+from config import BOT_NAME, BOT_NUMBER, PREFIX
+from plugins.general import handle_general_commands
 
-log.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
-# إنشاء جلسة البوت باسم غبيمارو
-client = NewClient("gabimaru_session.sqlite3")
+# إنشاء ملف الجلسة الخاص برقم البوت
+client = NewClient("gabimaru.sqlite3")
+
+def request_pairing_code():
+    # الانتظار قليلاً لتهيئة الاتصال ثم طلب الكود للرقم 212784776925
+    time.sleep(3)
+    try:
+        code = client.PairPhone(BOT_NUMBER, show_push_notification=True)
+        print(f"\n==========================================")
+        print(f"🔑 كود تفعيل البوت للرقم ({BOT_NUMBER}): {code}")
+        print(f"==========================================\n")
+    except Exception as e:
+        print(f"⚠️ ملاحظة (قد يكون الرقم مرتبطاً بالفعل): {e}")
 
 @client.event(ConnectedEv)
-def on_connected(client: NewClient, _: ConnectedEv):
-    print("✅ تم ربط بوت غبيمارو بنجاح وهو الآن قيد التشغيل!")
+def on_connected(client: NewClient, event: ConnectedEv):
+    print(f"\n✅ تم تشغيل {BOT_NAME} بنجاح على الرقم {BOT_NUMBER}!\n")
+
+@client.event(PairStatusEv)
+def on_pair_status(client: NewClient, event: PairStatusEv):
+    print(f"🔗 تم الربط بنجاح مع الرقم: {event.ID.User}")
 
 @client.event(MessageEv)
 def on_message(client: NewClient, message: MessageEv):
-    # استخراج نص الرسالة
-    text = message.Message.conversation or message.Message.extendedTextMessage.text
+    text = (
+        message.Message.conversation
+        or message.Message.extendedTextMessage.text
+    )
+
     if not text:
         return
 
-    chat = message.Info.MessageSource.Chat
-    cmd = text.strip().lower()
+    text = text.strip()
 
-    # 1. أمر فحص البوت
-    if cmd == ".تست":
-        client.reply_message("🔥 بوت غبيمارو شغال بنجاح!", message)
+    if text.startswith(PREFIX):
+        handled = handle_general_commands(client, message, text)
+        if not handled:
+            client.reply_message(f"❌ أمر غير معروف. اكتب `{PREFIX}اوامر` لرؤية القائمة.", message)
 
-    # 2. قائمة أوامر غبيمارو
-    elif cmd == ".اوامر" or cmd == ".الاوامر":
-        menu = (
-            "⚔️ *قائمة أوامر بوت غبيمارو* ⚔️\n\n"
-            "🔹 *.تست* : فحص سرعة واستجابة البوت\n"
-            "🔹 *.معلومات* : عرض معلومات البوت والمطور\n"
-            "🔹 *.المطور* : التواصل مع مالك البوت\n\n"
-            "⚡ *الحالة:* متصل (Termux Python)"
-        )
-        client.reply_message(menu, message)
-
-    # 3. أمر المعلومات
-    elif cmd == ".معلومات":
-        info = (
-            "🤖 *اسم البوت:* Gabimaru Bot\n"
-            "💻 *النظام:* Python on Termux\n"
-            "👤 *المالك:* kare612"
-        )
-        client.reply_message(info, message)
-
-    # 4. أمر المطور
-    elif cmd == ".المطور":
-        client.reply_message("👑 حساب المطور: ://github.com", message)
-
-# تشغيل البوت
-client.connect()
-  
+if __name__ == "__main__":
+    print(f"⏳ جاري تشغيل {BOT_NAME} وطلب كود التفعيل للرقم {BOT_NUMBER}...")
+    # تشغيل دالة طلب الكود في الخلفية بالتوازي مع الاتصال
+    threading.Thread(target=request_pairing_code, daemon=True).start()
+    client.connect()
+    
